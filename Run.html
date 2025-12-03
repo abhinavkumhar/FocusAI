@@ -2,327 +2,718 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FOCUS AI — Student Attention Detection</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FocusAI - Classroom Attention Monitor</title>
 
-    <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
 
-    <style>
-        /* GLOBAL */
-        body {
-            background: #0d0f17;
-            font-family: "Poppins", sans-serif;
-            color: white;
-            overflow: hidden;
-        }
+  <style>
+    /* Global layout */
 
-        /* Strictness fix */
-        .strict-card,
-        .strict-card * {
-            pointer-events: auto !important;
-        }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Poppins", sans-serif;
+      background: radial-gradient(circle at top, #1e293b 0, #020617 40%, #020617 100%);
+      color: #e5e7eb;
+      height: 100vh;
+      overflow: hidden;
+    }
 
-        input[type=range] {
-            pointer-events: auto !important;
-        }
+    .app-shell {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
 
-        /* Glass UI */
-        .glass {
-            background: rgba(255, 255, 255, 0.06);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 16px;
-        }
+    /* Top bar */
 
-        /* Headers */
-        .header-title {
-            font-size: 28px;
-            font-weight: 800;
-            letter-spacing: 2px;
-            background: linear-gradient(to right, #4cc9f0, #b5179e);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+    .top-bar {
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #020617;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #cbd5f5;
+    }
 
-        /* Stats */
-        .stat-number {
-            font-size: 32px;
-            font-weight: 800;
-        }
+    /* Shell: sidebar + main */
 
-        #canvas {
-            border-radius: 18px;
-            box-shadow: 0 0 50px rgba(76, 201, 240, 0.3);
-        }
+    .shell-main {
+      flex: 1;
+      display: flex;
+      background: linear-gradient(135deg, #020617, #020617 60%, #020617);
+    }
 
-        /* Buttons */
-        .action-btn {
-            width: 170px;
-            padding: 12px;
-            font-size: 15px;
-            font-weight: 700;
-            border-radius: 14px;
-            transition: 0.2s;
-            cursor: pointer;
-        }
+    .sidebar {
+      width: 230px;
+      background: #020617;
+      border-right: 1px solid rgba(148, 163, 184, 0.18);
+      display: flex;
+      flex-direction: column;
+      padding: 16px 14px;
+      gap: 16px;
+    }
 
-        .start-btn {
-            background: linear-gradient(90deg, #4cc9f0, #4361ee);
-        }
+    .logo-row {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: radial-gradient(circle at top left, #4f46e5 0, #1e1b4b 40%, transparent 70%);
+    }
 
-        .stop-btn {
-            background: linear-gradient(90deg, #ef233c, #d90429);
-        }
+    .logo-badge {
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 30% 0, #a855f7, #4f46e5 60%, #1d4ed8 100%);
+      color: white;
+      font-size: 14px;
+      font-weight: 700;
+    }
 
-        .action-btn:hover {
-            transform: scale(1.06);
-        }
+    .logo-text-main {
+      font-size: 14px;
+      font-weight: 700;
+      color: #e5e7eb;
+    }
 
-        /* Slider */
-        input[type=range] {
-            width: 180px;
-            height: 6px;
-            background: linear-gradient(90deg, #00ff87, #ffdd00, #ff004c);
-            border-radius: 5px;
-        }
+    .logo-text-sub {
+      font-size: 10px;
+      color: #9ca3af;
+    }
 
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 18px;
-            height: 18px;
-            background: white;
-            border-radius: 50%;
-            border: 3px solid #4cc9f0;
-        }
-    </style>
+    .nav-section-label {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #6b7280;
+      padding: 4px 6px;
+      margin-top: 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 10px;
+      margin-bottom: 4px;
+      border-radius: 10px;
+      font-size: 13px;
+      color: #e5e7eb;
+      cursor: pointer;
+      transition: background 0.16s ease, color 0.16s ease;
+    }
+
+    .nav-item span.icon {
+      font-size: 16px;
+    }
+
+    .nav-item.active {
+      background: radial-gradient(circle at left, rgba(96, 165, 250, 0.4), rgba(15, 23, 42, 0.95));
+      color: #e0f2fe;
+    }
+
+    .nav-item.inactive {
+      color: #9ca3af;
+    }
+
+    .nav-item.inactive:hover {
+      background: rgba(15, 23, 42, 0.95);
+      color: #e5e7eb;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 6px 8px;
+      font-size: 12px;
+      color: #6b7280;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: default;
+    }
+
+    .sidebar-footer span.icon {
+      font-size: 14px;
+    }
+
+    /* Main content */
+
+    .main {
+      flex: 1;
+      padding: 14px 18px 18px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .main-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .main-header-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .page-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #e5e7eb;
+    }
+
+    .page-subtitle {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    .main-header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Strictness card */
+
+    .strict-card {
+      background: rgba(15, 23, 42, 0.97);
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 210px;
+      pointer-events: auto !important;
+    }
+
+    .strict-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #9ca3af;
+    }
+
+    .strict-label-row span.title {
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 600;
+      color: #9ca3af;
+    }
+
+    #strictText {
+      font-size: 11px;
+      font-weight: 600;
+      color: #e0f2fe;
+    }
+
+    input[type=range] {
+      pointer-events: auto !important;
+      width: 100%;
+      height: 6px;
+      background: linear-gradient(90deg, #22c55e, #eab308, #ef4444);
+      border-radius: 999px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      background: #0f172a;
+      border: 2px solid #a855f7;
+      border-radius: 999px;
+      box-shadow: 0 0 0 2px rgba(15, 23, 42, 0.9);
+      cursor: pointer;
+    }
+
+    /* Buttons */
+
+    .action-btn {
+      width: 160px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    .start-btn {
+      background: radial-gradient(circle at top left, #a855f7, #6366f1);
+      color: white;
+      box-shadow: 0 12px 35px rgba(129, 140, 248, 0.55);
+    }
+
+    .stop-btn {
+      background: radial-gradient(circle at top left, #f97316, #ef4444);
+      color: white;
+      box-shadow: 0 12px 30px rgba(248, 113, 113, 0.55);
+    }
+
+    .action-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 40px rgba(129, 140, 248, 0.65);
+    }
+
+    .action-btn:active {
+      transform: translateY(0);
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.9);
+    }
+
+    /* Grid layout */
+
+    .main-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 2.5fr) minmax(260px, 0.9fr);
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .panel {
+      background: rgba(15, 23, 42, 0.96);
+      border-radius: 18px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .panel-header span.title {
+      color: #e5e7eb;
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    .panel-body {
+      flex: 1;
+      position: relative;
+      border-radius: 14px;
+      overflow: hidden;
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 1), rgba(15, 23, 42, 1));
+    }
+
+    #canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 14px;
+      border: 1px solid rgba(30, 64, 175, 0.5);
+      box-shadow: 0 0 50px rgba(37, 99, 235, 0.3);
+      background: #020617;
+    }
+
+    #loader {
+      background: rgba(15, 23, 42, 0.9);
+    }
+
+    /* Stats panel */
+
+    .stat-card {
+      background: rgba(15, 23, 42, 0.96);
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      padding: 10px 10px 12px 10px;
+      margin-bottom: 8px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9ca3af;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 6px;
+    }
+
+    .stat-sub {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      gap: 4px;
+    }
+
+    .badge-idle {
+      background: rgba(30, 64, 175, 0.35);
+      color: #bfdbfe;
+    }
+
+    .badge-live {
+      background: rgba(22, 163, 74, 0.3);
+      color: #bbf7d0;
+    }
+
+    /* Range fix for Firefox as well */
+
+    input[type=range]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      background: #0f172a;
+      border: 2px solid #a855f7;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+
+    input[type=range]::-moz-range-track {
+      background: transparent;
+    }
+  </style>
 </head>
 
-<body class="flex flex-col h-screen">
+<body>
+  <div class="app-shell">
 
-    <!-- HEADER -->
-    <header class="p-4 glass mx-4 mt-3 flex justify-between items-center">
+    <!-- Top bar -->
+    <div class="top-bar">
+      FocusAI - Classroom Attention Monitor
+    </div>
 
-        <div>
-            <h1 class="header-title">FOCUS AI</h1>
-            <p class="text-xs text-gray-300">Student Attention Detection System</p>
+    <!-- Shell -->
+    <div class="shell-main">
+
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="logo-row">
+          <div class="logo-badge">FA</div>
+          <div>
+            <div class="logo-text-main">FocusAI</div>
+            <div class="logo-text-sub">Real time engagement</div>
+          </div>
         </div>
 
-        <!-- STRICTNESS -->
-        <div class="glass p-3 rounded-xl flex flex-col items-center strict-card">
+        <div class="nav-section-label">Navigation</div>
 
-            <p class="text-xs text-cyan-300 uppercase font-semibold tracking-wide">Strictness</p>
-
-            <span id="strictText" class="text-xs text-cyan-300 mb-2">Medium</span>
-
-            <input id="sensitivity" type="range" min="20" max="80" value="50">
-
+        <div class="nav-item active">
+          <span class="icon">📊</span>
+          <span>Live Monitor</span>
         </div>
 
-        <!-- STATS -->
-        <div class="flex gap-8">
-            <div class="text-center">
-                <p class="text-xs text-cyan-300 uppercase">Students</p>
-                <p id="countDisplay" class="stat-number text-cyan-400">0</p>
+        <div class="nav-item inactive">
+          <span class="icon">👥</span>
+          <span>Students</span>
+        </div>
+
+        <div class="nav-item inactive">
+          <span class="icon">⚙️</span>
+          <span>Configuration</span>
+        </div>
+
+        <div class="sidebar-footer">
+          <span class="icon">↩</span>
+          <span>Sign Out</span>
+        </div>
+      </aside>
+
+      <!-- Main content -->
+      <main class="main">
+
+        <!-- Header row -->
+        <div class="main-header-row">
+          <div class="main-header-left">
+            <div class="page-title">Live Monitor</div>
+            <div class="page-subtitle">
+              Monitor posture and attention in real time using on device computer vision.
             </div>
-            <div class="text-center">
-                <p class="text-xs text-cyan-300 uppercase">Focus</p>
-                <p id="focusDisplay" class="stat-number text-pink-400">--</p>
+          </div>
+
+          <div class="main-header-right">
+
+            <!-- Strictness card -->
+            <div class="strict-card">
+              <div class="strict-label-row">
+                <span class="title">Strictness</span>
+                <span id="strictText">Medium</span>
+              </div>
+              <input id="sensitivity" type="range" min="20" max="80" value="50">
             </div>
+
+            <!-- Start/Stop buttons -->
+            <button id="initBtn" class="action-btn start-btn" onclick="initSystem()">
+              <span>▶</span>
+              <span>Start FocusAI</span>
+            </button>
+
+            <button id="stopBtn" class="action-btn stop-btn hidden" onclick="stopSystem()">
+              <span>■</span>
+              <span>Stop FocusAI</span>
+            </button>
+          </div>
         </div>
 
-    </header>
+        <!-- Grid -->
+        <div class="main-grid">
 
+          <!-- Left: video panel -->
+          <section class="panel">
+            <div class="panel-header">
+              <span class="title">Vision Feed</span>
+              <span style="font-size: 11px; color:#64748b;">Processing only on device - no recording</span>
+            </div>
+            <div class="panel-body">
+              <video id="video" class="hidden" playsinline></video>
+              <canvas id="canvas"></canvas>
 
-    <!-- MAIN AREA -->
-    <main class="flex-1 flex items-center justify-center relative mt-4">
+              <div id="loader" class="absolute inset-0 flex flex-col items-center justify-center rounded-xl hidden">
+                <div class="w-14 h-14 border-4 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+                <p class="mt-3 text-sm text-slate-200">Loading attention model...</p>
+              </div>
+            </div>
+          </section>
 
-        <video id="video" class="hidden" playsinline></video>
+          <!-- Right: stats panel -->
+          <section class="flex flex-col gap-3">
+            <div class="stat-card">
+              <div class="stat-label">Attention</div>
+              <div id="focusDisplay" class="stat-value text-sky-400">--</div>
+              <div class="stat-sub">
+                Overall percentage of students currently classified as focused.
+              </div>
+            </div>
 
-        <canvas id="canvas" class="glass"></canvas>
+            <div class="stat-card">
+              <div class="stat-label">Active Students</div>
+              <div id="countDisplay" class="stat-value text-emerald-400">0</div>
+              <div class="stat-sub">
+                Number of detected bodies inside the camera frame.
+              </div>
+            </div>
 
-        <div id="loader"
-            class="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-xl hidden">
-            <div class="w-14 h-14 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
-            <p class="mt-3 text-cyan-300 font-semibold">Loading AI Model...</p>
+            <div class="stat-card">
+              <div class="stat-label">System Status</div>
+              <div style="margin-top:8px;">
+                <span id="statusBadge" class="status-badge badge-idle">
+                  <span style="font-size:10px;">●</span>
+                  <span>Standby</span>
+                </span>
+              </div>
+              <div class="stat-sub" style="margin-top:8px;">
+                Press "Start FocusAI" to initialize the camera and begin pose detection.
+              </div>
+            </div>
+          </section>
+
         </div>
+      </main>
+    </div>
+  </div>
 
-    </main>
+  <!-- JS logic (unchanged) -->
+  <script>
+    let detector;
+    let isRunning = false;
 
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
 
-    <!-- FOOT BUTTONS -->
-    <footer class="p-4 flex justify-center gap-6">
+    const loader = document.getElementById("loader");
+    const initBtn = document.getElementById("initBtn");
+    const stopBtn = document.getElementById("stopBtn");
 
-        <button id="initBtn" onclick="initSystem()" class="action-btn start-btn">
-            START SYSTEM
-        </button>
+    const countDisplay = document.getElementById("countDisplay");
+    const focusDisplay = document.getElementById("focusDisplay");
 
-        <button id="stopBtn" onclick="stopSystem()" class="action-btn stop-btn hidden">
-            STOP SYSTEM
-        </button>
+    const senseSlider = document.getElementById("sensitivity");
+    const strictText = document.getElementById("strictText");
 
-    </footer>
+    const statusBadge = document.getElementById("statusBadge");
 
+    let STRICTNESS_THRESHOLD = 0.5;
 
-    <!-- ============================== -->
-    <!-- JS LOGIC (UNCHANGED) -->
-    <!-- ============================== -->
+    senseSlider.oninput = (e) => {
+      const val = Number(e.target.value);
+      STRICTNESS_THRESHOLD = val / 100;
 
-    <script>
+      if (val < 40) {
+        strictText.textContent = "Low";
+        strictText.style.color = "#22c55e";
+      } else if (val < 60) {
+        strictText.textContent = "Medium";
+        strictText.style.color = "#eab308";
+      } else {
+        strictText.textContent = "High";
+        strictText.style.color = "#f97316";
+      }
+    };
 
-        let detector;
-        let isRunning = false;
+    async function initSystem() {
+      if (isRunning) return;
+      isRunning = true;
 
-        const video = document.getElementById("video");
-        const canvas = document.getElementById("canvas");
-        const ctx = canvas.getContext("2d");
+      initBtn.classList.add("hidden");
+      stopBtn.classList.remove("hidden");
+      loader.classList.remove("hidden");
 
-        const loader = document.getElementById("loader");
-        const initBtn = document.getElementById("initBtn");
-        const stopBtn = document.getElementById("stopBtn");
+      if (statusBadge) {
+        statusBadge.classList.remove("badge-idle");
+        statusBadge.classList.add("badge-live");
+        statusBadge.innerHTML = "<span style='font-size:10px;'>●</span><span>Live</span>";
+      }
 
-        const countDisplay = document.getElementById("countDisplay");
-        const focusDisplay = document.getElementById("focusDisplay");
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 1280, height: 720 }
+        });
 
-        const senseSlider = document.getElementById("sensitivity");
-        const strictText = document.getElementById("strictText");
+        video.srcObject = stream;
+        await video.play();
 
-        let STRICTNESS_THRESHOLD = 0.5;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
 
-        senseSlider.oninput = (e) => {
-            const val = Number(e.target.value);
-            STRICTNESS_THRESHOLD = val / 100;
+        detector = await poseDetection.createDetector(
+          poseDetection.SupportedModels.MoveNet,
+          {
+            modelType: poseDetection.movenet.modelType.MULTIPOSE_LIGHTNING,
+            enableSmoothing: true
+          }
+        );
 
-            if (val < 40) { strictText.textContent = "Low"; strictText.style.color = "#00ff87"; }
-            else if (val < 60) { strictText.textContent = "Medium"; strictText.style.color = "#ffdd00"; }
-            else { strictText.textContent = "High"; strictText.style.color = "#ff004c"; }
-        };
+        loader.classList.add("hidden");
+        renderLoop();
 
-        async function initSystem() {
-            if (isRunning) return;
-            isRunning = true;
+      } catch (err) {
+        alert("Error: " + err);
+      }
+    }
 
-            initBtn.classList.add("hidden");
-            stopBtn.classList.remove("hidden");
-            loader.classList.remove("hidden");
+    function stopSystem() {
+      if (!isRunning) return;
+      isRunning = false;
 
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { width: 1280, height: 720 }
-                });
+      if (video.srcObject) {
+        video.srcObject.getTracks().forEach(t => t.stop());
+      }
 
-                video.srcObject = stream;
-                await video.play();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
+      stopBtn.classList.add("hidden");
+      initBtn.classList.remove("hidden");
 
-                detector = await poseDetection.createDetector(
-                    poseDetection.SupportedModels.MoveNet,
-                    {
-                        modelType: poseDetection.movenet.modelType.MULTIPOSE_LIGHTNING,
-                        enableSmoothing: true
-                    }
-                );
+      countDisplay.textContent = "0";
+      focusDisplay.textContent = "--";
 
-                loader.classList.add("hidden");
-                renderLoop();
+      if (statusBadge) {
+        statusBadge.classList.remove("badge-live");
+        statusBadge.classList.add("badge-idle");
+        statusBadge.innerHTML = "<span style='font-size:10px;'>●</span><span>Standby</span>";
+      }
+    }
 
-            } catch (err) { alert("Error: " + err); }
+    async function renderLoop() {
+      if (!isRunning) return;
+
+      const poses = await detector.estimatePoses(video);
+      drawResults(poses);
+
+      requestAnimationFrame(renderLoop);
+    }
+
+    function drawResults(poses) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      let focusedCount = 0;
+      let total = 0;
+
+      poses.forEach(pose => {
+        if (pose.score < 0.25) return;
+
+        total++;
+
+        const nose = pose.keypoints.find(k => k.name === "nose");
+        const ls = pose.keypoints.find(k => k.name === "left_shoulder");
+        const rs = pose.keypoints.find(k => k.name === "right_shoulder");
+
+        let focused = false;
+
+        if (ls && rs && ls.score > 0.3 && rs.score > 0.3) {
+          const center = (ls.x + rs.x) / 2;
+          const width = Math.abs(ls.x - rs.x);
+
+          if (nose && nose.score > 0.3) {
+            const offset = Math.abs(nose.x - center);
+            const allowed = width * (1 - STRICTNESS_THRESHOLD);
+            if (offset < allowed) focused = true;
+          }
         }
 
-        function stopSystem() {
-            if (!isRunning) return;
-            isRunning = false;
+        if (focused) focusedCount++;
 
-            if (video.srcObject) {
-                video.srcObject.getTracks().forEach(t => t.stop());
-            }
+        const color = focused ? "#22c55e" : "#ef4444";
 
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (nose) {
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(nose.x, nose.y, 40, 0, Math.PI * 2);
+          ctx.stroke();
 
-            stopBtn.classList.add("hidden");
-            initBtn.classList.remove("hidden");
-
-            countDisplay.textContent = "0";
-            focusDisplay.textContent = "--";
+          ctx.fillStyle = color;
+          ctx.font = "bold 14px system-ui";
+          ctx.fillText(focused ? "FOCUSED" : "DISTRACTED", nose.x - 30, nose.y - 50);
         }
+      });
 
-        async function renderLoop() {
-            if (!isRunning) return;
+      countDisplay.textContent = total;
+      const pct = total ? Math.round((focusedCount / total) * 100) : 0;
+      focusDisplay.textContent = pct + "%";
 
-            const poses = await detector.estimatePoses(video);
-            drawResults(poses);
-
-            requestAnimationFrame(renderLoop);
-        }
-
-        function drawResults(poses) {
-
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            let focusedCount = 0;
-            let total = 0;
-
-            poses.forEach(pose => {
-
-                if (pose.score < 0.25) return;
-
-                total++;
-
-                const nose = pose.keypoints.find(k => k.name === "nose");
-                const ls = pose.keypoints.find(k => k.name === "left_shoulder");
-                const rs = pose.keypoints.find(k => k.name === "right_shoulder");
-
-                let focused = false;
-
-                if (ls && rs && ls.score > 0.3 && rs.score > 0.3) {
-
-                    const center = (ls.x + rs.x) / 2;
-                    const width = Math.abs(ls.x - rs.x);
-
-                    if (nose && nose.score > 0.3) {
-                        const offset = Math.abs(nose.x - center);
-                        const allowed = width * (1 - STRICTNESS_THRESHOLD);
-                        if (offset < allowed) focused = true;
-                    }
-                }
-
-                if (focused) focusedCount++;
-
-                const color = focused ? "#00ff87" : "#ff004c";
-
-                if (nose) {
-                    ctx.strokeStyle = color;
-                    ctx.lineWidth = 3;
-                    ctx.beginPath();
-                    ctx.arc(nose.x, nose.y, 40, 0, Math.PI * 2);
-                    ctx.stroke();
-
-                    ctx.fillStyle = color;
-                    ctx.font = "bold 14px Poppins";
-                    ctx.fillText(focused ? "FOCUSED" : "DISTRACTED", nose.x - 30, nose.y - 50);
-                }
-            });
-
-            countDisplay.textContent = total;
-
-            const pct = total ? Math.round((focusedCount / total) * 100) : 0;
-            focusDisplay.textContent = pct + "%";
-
-            focusDisplay.style.color =
-                pct > 80 ? "#00ff87" :
-                    pct > 50 ? "#ffdd00" :
-                        "#ff004c";
-        }
-
-    </script>
-
+      if (pct > 80) focusDisplay.style.color = "#22c55e";
+      else if (pct > 50) focusDisplay.style.color = "#eab308";
+      else focusDisplay.style.color = "#ef4444";
+    }
+  </script>
 </body>
 
 </html>
